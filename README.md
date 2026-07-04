@@ -69,7 +69,7 @@ Runtime Software Engines: Python 3.10 or higher and Node.js 18 or higher install
 Installation & Dependency Alignment
 1. System Clone
 Bash
-git clone [https://github.com/Parth-Jos-hi/voidscout.git](https://github.com/Parth-Jos-hi/voidscout.git)
+git clone [https://github.com/Parth-Jos-hi/Code-Compass.git](https://github.com/Parth-Jos-hi/Code-Compass.git)
 cd voidscout
 2. Backend Environment Verification & Startup
 Bash
