@@ -11,7 +11,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential gcc git \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
 
 COPY backend/app ./app
 COPY backend/chroma_data ./chroma_data

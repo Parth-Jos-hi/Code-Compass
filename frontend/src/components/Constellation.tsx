@@ -74,7 +74,8 @@ export default function Constellation({ nodes, onNodeSelect }: ConstellationProp
         ))}
 
         {lineGeometry && (
-          <line geometry={lineGeometry}>
+          <line>
+            <bufferGeometry attach="geometry" {...{ attributes: lineGeometry.attributes, index: lineGeometry.index }} />
             <lineBasicMaterial color="#4f46e5" opacity={0.4} transparent />
           </line>
         )}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Center, Text3D, Environment } from "@react-three/drei";
 import * as THREE from "three";
+import type { CodeNode } from "../services/api";
 
 /* ------------------------------------------------------------------ */
 /*  Config                                                             */
@@ -227,6 +228,10 @@ function ResponsiveCamera() {
 /* ------------------------------------------------------------------ */
 
 interface ThreeDCanvasProps {
+  /** Live repository node data to render in the 3D scene. */
+  nodes: CodeNode[];
+  /** Called when a node is selected in the 3D scene. */
+  onNodeSelect: (node: CodeNode) => void;
   /** Called once the startup acceleration animation has settled. */
   onIntroComplete?: () => void;
   /** Enable/disable the persistent mouse-tilt interaction (default true). */
@@ -237,6 +242,8 @@ interface ThreeDCanvasProps {
 }
 
 export default function ThreeDCanvas({
+  nodes,
+  onNodeSelect,
   onIntroComplete,
   enableTilt = true,
   showStars = true,
