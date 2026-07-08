@@ -37,6 +37,7 @@ SUPPORTED_EXTENSIONS = {
 }
 def scan_local_repository(repo_path:str)->list:
     discovered_files = []
+    seen_paths = set()
     for root,dirs,files in os.walk(repo_path):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
         for file in files:
@@ -44,15 +45,18 @@ def scan_local_repository(repo_path:str)->list:
             file_type = SUPPORTED_EXTENSIONS.get(file_ext) or SUPPORTED_EXTENSIONS.get(file)
             if file_type:
                 full_path = os.path.join(root, file)
-                relative_path = os.path.relpath(full_path, repo_path)
+                relative_path = os.path.relpath(full_path, repo_path).replace('\\', '/')
+                if relative_path in seen_paths:
+                    continue
+                seen_paths.add(relative_path)
                 try:
                     with open(full_path, 'r', encoding='utf-8') as f:
                         code_content = f.read()
                         discovered_files.append({
-                        "file_path": relative_path,
-                        "language": file_type,
-                        "content": code_content
-                    })
+                            "file_path": relative_path,
+                            "language": file_type,
+                            "content": code_content
+                        })
                 except Exception:
                     # Silently ignore binary components or locked system files
                     continue

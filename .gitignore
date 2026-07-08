@@ -6,9 +6,11 @@
 # Python runtime artifacts
 __pycache__/
 *.py[cod]
+backend/.venv/
 
 # Local backend storage and logs
 backend/local_compass.db
+backend/data/
 backend/chroma_data/
 backend/*.log
 

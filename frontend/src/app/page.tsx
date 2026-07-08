@@ -4,9 +4,10 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import MediaFrame from '../components/MediaFrame';
 import FloatingAssets from '../components/FloatingAssets';
-import ThreeDCanvas from '../components/ThreeDCanvas';
+import FileTreeGraph from '../components/FileTreeGraph';
+import QuestionModule from '../components/QuestionModule';
 import DynamicSidebar from '../components/DynamicSidebar';
-import { indexLocalRepository, getRepositoryNodes, IndexResponse, CodeNode } from '../services/api';
+import { indexLocalRepository, getRepositoryNodes, getQuestionsForNode, IndexResponse, CodeNode, Question } from '../services/api';
 
 export default function Home() {
   const [repoPath, setRepoPath] = useState("");
@@ -15,6 +16,8 @@ export default function Home() {
   const [scanResult, setScanResult] = useState<IndexResponse | null>(null);
   const [liveNodes, setLiveNodes] = useState<CodeNode[]>([]);
   const [selectedNode, setSelectedNode] = useState<CodeNode | null>(null);
+  const [nodeQuestions, setNodeQuestions] = useState<Question[]>([]);
+  const [showQuestions, setShowQuestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleScanSubmit = async (e: React.FormEvent) => {
@@ -24,6 +27,7 @@ export default function Home() {
     setLoading(true);
     setError(null);
     setSelectedNode(null);
+    setShowQuestions(false);
     try {
       const data = await indexLocalRepository(repoPath, repoName);
       setScanResult(data);
@@ -34,6 +38,20 @@ export default function Home() {
       setError(err.message || "Failed connecting to local scanning engine.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleNodeSelect = async (node: CodeNode) => {
+    setSelectedNode(node);
+    setShowQuestions(true);
+    
+    // Try to fetch questions for this node
+    try {
+      const questions = await getQuestionsForNode(parseInt(node.id), repoName);
+      setNodeQuestions(questions);
+    } catch (err) {
+      console.error('Failed to fetch questions:', err);
+      setNodeQuestions([]);
     }
   };
 
@@ -51,13 +69,13 @@ export default function Home() {
           {/* Left Text and Form Column */}
           <div className="lg:col-span-5 space-y-8">
             <div className="space-y-4">
-              <span className="text-xs font-bold tracking-[0.3em] uppercase text-rose-500">Voyage Engine v1.0</span>
+              <span className="text-xs font-bold tracking-[0.3em] uppercase text-rose-500">Voyage Engine v2.0</span>
               <h2 className="text-5xl font-black tracking-tight leading-tight text-white">
-                We are high-end <br />
-                <span className="text-neutral-400">luxurious map.</span>
+                Interactive file tree <br />
+                <span className="text-neutral-400">with smart learning.</span>
               </h2>
               <p className="text-sm text-neutral-400 leading-relaxed max-w-sm">
-                We abstract codebase structures into architectural constellations. Locked-in ingestion pipelines map vector spaces securely.
+                Navigate your codebase with an intuitive file tree. Answer questions to master modules. LLM evaluates your understanding automatically.
               </p>
             </div>
 
@@ -108,12 +126,12 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Interactive 3D Spatial Map & Sidebar Split Grid */}
+        {/* File Tree Graph & Sidebar Split Grid */}
         <section className="space-y-4">
           <div className="flex items-center justify-between border-b border-neutral-900 pb-4">
             <div>
-              <h3 className="text-lg font-bold text-white tracking-tight">Interactive Spatial Constellation</h3>
-              <p className="text-xs text-neutral-500">Live operational database feedback from active ingestion scans</p>
+              <h3 className="text-lg font-bold text-white tracking-tight">Repository Structure Explorer</h3>
+              <p className="text-xs text-neutral-500">Browse files and folders • Click to view details and answer questions</p>
             </div>
             <span className="text-xs font-mono text-rose-500 bg-rose-950/20 px-3 py-1 rounded-full border border-rose-900/30">
               Active Targets: {liveNodes.length} Files
@@ -123,11 +141,11 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             <div className="lg:col-span-3 h-[580px] rounded-2xl overflow-hidden bg-[#050505] border border-neutral-900 shadow-inner relative">
               {liveNodes.length > 0 ? (
-                <ThreeDCanvas nodes={liveNodes} onNodeSelect={setSelectedNode} />
+                <FileTreeGraph nodes={liveNodes} selectedNode={selectedNode} onSelectNode={handleNodeSelect} />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-center p-6 bg-gradient-to-b from-transparent to-[#0a0a0a]">
                   <p className="text-xs text-neutral-500 italic max-w-xs">
-                    Awaiting initial local codebase scanning instruction sequence to plot files into configurations...
+                    Awaiting initial local codebase scanning instruction sequence to plot files into tree configurations...
                   </p>
                 </div>
               )}
@@ -139,19 +157,47 @@ export default function Home() {
                 liveNodes={liveNodes} 
                 setLiveNodes={setLiveNodes} 
                 setSelectedNode={setSelectedNode} 
+                repoName={repoName}
+                repoPath={repoPath}
               />
             </div>
           </div>
         </section>
 
+        {/* Questions Section */}
+        {showQuestions && selectedNode && nodeQuestions.length > 0 && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-900 pb-4">
+              <div>
+                <h3 className="text-lg font-bold text-white tracking-tight">Module Learning Interface</h3>
+                <p className="text-xs text-neutral-500">Answer questions to master this module • LLM evaluates automatically</p>
+              </div>
+            </div>
+            <QuestionModule 
+              questions={nodeQuestions} 
+              nodeId={parseInt(selectedNode.id)} 
+              filePath={selectedNode.file_path}
+              onAnswerSubmitted={() => {
+                // Refresh node data to show updated mastery status
+                if (selectedNode) {
+                  const updated = liveNodes.find(n => n.id === selectedNode.id);
+                  if (updated) {
+                    setSelectedNode(updated);
+                  }
+                }
+              }}
+            />
+          </section>
+        )}
+
         {/* Lower Minimal Section Layout */}
         <section className="flex flex-col md:flex-row justify-between items-start md:items-center border-t border-neutral-900 pt-8 gap-4">
           <div>
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">We are\'t fort ind refferesion</h4>
-            <p className="text-xs text-neutral-500 mt-1">Lyhe option exvige vendor opacity settings control tracking pipelines.</p>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Smart Learning Features</h4>
+            <p className="text-xs text-neutral-500 mt-1">Questions automatically generated by LLM • Answers evaluated in real-time • Mastery tracked at 75% threshold</p>
           </div>
           <button className="text-xs font-bold px-5 py-2.5 bg-neutral-900 border border-neutral-800 rounded-full text-neutral-300 hover:text-white hover:border-neutral-700 transition-colors cursor-pointer">
-            Test All Nodes
+            View Progress
           </button>
         </section>
 

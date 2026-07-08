@@ -1,11 +1,20 @@
-## The Connection Manager (database.py) – Opens and closes the communication line to our database file.
+from pathlib import Path
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base,sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from app.core.config import settings
 
-# 1. Grab the local SQLite URL from our config file
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
-# 2. Create the SQLAlchemy engine to manage the connection to the database
+
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    db_path = SQLALCHEMY_DATABASE_URL.replace("sqlite:///", "")
+    if db_path and db_path != ":memory:":
+        db_file = Path(db_path)
+        if not db_file.is_absolute():
+            db_file = Path.cwd() / db_file
+        db_file.parent.mkdir(parents=True, exist_ok=True)
+
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 # 3. Create a session factory to handle database sessions
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

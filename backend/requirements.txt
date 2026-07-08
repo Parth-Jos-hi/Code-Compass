@@ -3,6 +3,9 @@ uvicorn==0.30.0
 chromadb==1.5.9
 sqlalchemy==2.0.28
 pydantic-settings==2.4.0
+python-dotenv==1.0.1
+openai>=1.21.0
+groq>=0.4.0
 
 
 

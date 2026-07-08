@@ -57,7 +57,7 @@ export default function Constellation({ nodes, onNodeSelect }: ConstellationProp
   }, [nodes]);
 
   return (
-    <div className="w-full h-[600px] bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative">
+    <div className="w-full h-full bg-slate-950 rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative">
       <div className="absolute top-4 left-4 z-10 bg-slate-900/80 backdrop-blur-md px-4 py-2 rounded-lg border border-slate-700 pointer-events-none">
         <h3 className="text-sm font-semibold text-slate-200">3D Codebase Universe</h3>
         <p className="text-xs text-slate-400">Click a node to inspect its architecture | Drag to orbit</p>

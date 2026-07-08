@@ -2,12 +2,23 @@ import os
 import json
 import math
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db.database import get_db
 from app.db.models import RepositoryNode
+from app.core.path_utils import resolve_repository_file_path
 from app.core.parser import scan_local_repository, extract_dependencies, chunk_code_file
-from app.core.vector_engine import add_code_chunks
+from app.core.vector_engine import add_code_chunks, search_semantic_context
+from app.core.llm_engine import get_llm_engine
+
+
+class SocraticRequest(BaseModel):
+    question: str
+    repo_name: str
+    node_id: int | None = None
+    code_context: str | None = None
+    repo_path: str | None = None
 
 router = APIRouter(prefix="/api/voyage", tags=["Voyage Codebase Explorer"])
 
@@ -17,6 +28,36 @@ async def index_repository(repo_path: str = Query(...), repo_name: str = Query(.
     Primary ingestion endpoint. Crawls a local codebase repository path, resolves internal 
     architectural framework dependencies, and stores semantic text slices inside ChromaDB.
     """
+    if not os.path.exists(repo_path):
+        host_repo_base = os.getenv("HOST_REPO_BASE")
+        container_repo_base = os.getenv("CONTAINER_REPO_BASE")
+        if host_repo_base and container_repo_base:
+            # Normalize both paths to a common form and compare in a case-insensitive way
+            try:
+                # Use normpath to collapse redundant separators, then use forward slashes for comparison
+                normalized_host = os.path.normpath(host_repo_base).replace('\\', '/').rstrip('/')
+                normalized_path = os.path.normpath(repo_path).replace('\\', '/').rstrip('/')
+
+                if normalized_path.lower().startswith(normalized_host.lower()):
+                    # Compute the relative remainder and join with container base to form a valid container path
+                    remainder = normalized_path[len(normalized_host):].lstrip('/')
+                    repo_path = os.path.join(container_repo_base, remainder) if remainder else container_repo_base
+                else:
+                    # Additional handling: if repo_path was provided as a Windows drive-letter path
+                    # e.g. "D:/path/to/repo" or "D:\\path\\to\\repo", map the drive root to container base
+                    # Normalize to forward-slash form for pattern matching
+                    import re
+                    m = re.match(r"^([A-Za-z]):/(.*)$", normalized_path)
+                    if m:
+                        remainder = m.group(2).lstrip('/')
+                        repo_path = os.path.join(container_repo_base, remainder) if remainder else container_repo_base
+            except Exception:
+                # Fallback to the original simple replacement if anything unexpected occurs
+                normalized_host = host_repo_base.replace('\\', '/')
+                normalized_path = repo_path.replace('\\', '/')
+                if normalized_path.lower().startswith(normalized_host.lower()):
+                    repo_path = normalized_path.replace(normalized_host, container_repo_base, 1)
+
     if not os.path.exists(repo_path):
         raise HTTPException(status_code=404, detail="The specified absolute directory path does not exist.")
 
@@ -48,6 +89,13 @@ async def index_repository(repo_path: str = Query(...), repo_name: str = Query(.
         }
 
         # Save metadata structures inside our persistent SQLite database tables
+        existing_node = db.query(RepositoryNode).filter(
+            RepositoryNode.repo_name == repo_name,
+            RepositoryNode.file_path == path
+        ).first()
+        if existing_node:
+            continue
+
         node = RepositoryNode(
             repo_name=repo_name,
             file_path=path,
@@ -113,6 +161,145 @@ async def get_repository_graph(repo_name: str = Query(...), db: Session = Depend
         })
 
     return formatted_nodes
+
+
+@router.post("/socratic")
+async def socratic_query(payload: SocraticRequest, db: Session = Depends(get_db)):
+    """Answer a Socratic question using retrieval-augmented generation."""
+    question = payload.question
+    repo_name = payload.repo_name
+    node_id = payload.node_id
+    code_context = payload.code_context
+    repo_path = payload.repo_path
+
+    node = None
+    if node_id is not None:
+        node = db.query(RepositoryNode).filter(
+            RepositoryNode.repo_name == repo_name,
+            RepositoryNode.id == node_id
+        ).first()
+
+    if code_context is None and node:
+        resolved_path = None
+        if repo_path:
+            resolved_path = resolve_repository_file_path(os.path.join(repo_path, node.file_path))
+        if not resolved_path:
+            resolved_path = resolve_repository_file_path(node.file_path)
+        if resolved_path:
+            try:
+                with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f:
+                    code_context = f.read()
+            except Exception:
+                code_context = None
+
+    try:
+        results = search_semantic_context(
+            question,
+            repo_name,
+            n_results=24 if node is not None else 4
+        )
+    except Exception:
+        results = {}
+    context_chunks = []
+    source_paths = []
+
+    documents = results.get("documents") or []
+    metadatas = results.get("metadatas") or []
+    if node is not None and isinstance(metadatas, list):
+        # When a specific node is selected, keep only chunks from that file path.
+        filtered_docs = []
+        filtered_meta = []
+        for doc_list, meta_list in zip(documents, metadatas):
+            filtered_docs.append([])
+            filtered_meta.append([])
+            for doc, meta in zip(doc_list, meta_list):
+                if meta.get("file_path") == node.file_path:
+                    filtered_docs[-1].append(doc)
+                    filtered_meta[-1].append(meta)
+        documents = filtered_docs
+        metadatas = filtered_meta
+    if isinstance(documents, list) and len(documents) > 0:
+        documents = documents[0]
+    if isinstance(metadatas, list) and len(metadatas) > 0:
+        metadatas = metadatas[0]
+
+    for idx, doc in enumerate(documents):
+        if not doc:
+            continue
+        context_chunks.append(str(doc))
+        metadata = metadatas[idx] if idx < len(metadatas) else {}
+        source_paths.append(metadata.get("file_path", "unknown"))
+
+    if code_context:
+        context_chunks = [code_context] + context_chunks
+        if node:
+            source_paths = [node.file_path] + source_paths
+        else:
+            source_paths = [repo_name] + source_paths
+
+    if not context_chunks and node:
+        # Fallback to the resolved file itself if semantic retrieval does not return a match.
+        full_path = None
+        if repo_path:
+            full_path = resolve_repository_file_path(os.path.join(repo_path, node.file_path))
+        if not full_path:
+            full_path = resolve_repository_file_path(node.file_path)
+        try:
+            if full_path:
+                with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+                    context_chunks = [f.read()]
+                    source_paths = [node.file_path]
+        except Exception:
+            pass
+
+    rag_engine = get_llm_engine()
+    answer_payload = rag_engine.generate_rag_answer(question, repo_name, context_chunks, source_paths)
+
+    return {
+        "status": "success",
+        "question": question,
+        "answer": answer_payload["answer"],
+        "source_context": answer_payload["source_context"]
+    }
+
+
+@router.get("/file-content/{node_id}")
+async def get_file_content(
+    node_id: int,
+    repo_name: str = Query(...),
+    repo_path: str | None = Query(None),
+    db: Session = Depends(get_db)
+):
+    """Return the selected file content so the frontend can ask arbitrary questions about it."""
+    node = db.query(RepositoryNode).filter(
+        RepositoryNode.repo_name == repo_name,
+        RepositoryNode.id == node_id
+    ).first()
+
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+
+    full_path = None
+    if repo_path:
+        full_path = resolve_repository_file_path(os.path.join(repo_path, node.file_path))
+    if not full_path:
+        full_path = resolve_repository_file_path(node.file_path)
+    if not full_path:
+        raise HTTPException(status_code=404, detail="File content could not be resolved")
+
+    try:
+        with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to read file content: {exc}")
+
+    return {
+        "status": "success",
+        "node_id": node_id,
+        "file_path": node.file_path,
+        "language": node.language,
+        "content": content,
+    }
 
 
 @router.patch("/mastery")

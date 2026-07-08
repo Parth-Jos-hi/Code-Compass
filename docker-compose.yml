@@ -9,15 +9,24 @@ services:
       - backend/.env
     volumes:
       - ./backend/chroma_data:/app/chroma_data
-      - ./backend/local_compass.db:/app/local_compass.db
+      - ./backend/data:/app/data
+      - .:/host_repo:cached
+    environment:
+      DATABASE_URL: sqlite:///./data/local_compass.db
+      HOST_REPO_BASE: "D:\\Code-Compass"
+      CONTAINER_REPO_BASE: /host_repo
+      GROQ_MODEL: llama-3.3-70b-versatile
 
   frontend:
     build:
       context: .
       dockerfile: frontend/Dockerfile
       args:
-        NEXT_PUBLIC_API_BASE_URL: http://backend:8000/api
+        NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000/api
     ports:
       - "3000:3000"
     depends_on:
       - backend
+    environment:
+      - BACKEND_API_BASE_URL=http://backend:8000/api
+      - NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000/api

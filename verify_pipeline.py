@@ -124,7 +124,7 @@ def test_pipeline():
         print("---")
         print(documents[0][0])
         print("---")
-        print("✅ Vector Check: ChromaDB - Semantic search verified")
+        print("[PASS] Vector Check: ChromaDB - Semantic search verified")
         print("\n[SUCCESS] Full pipeline verification passed.")
     finally:
         db.rollback()
