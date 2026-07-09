@@ -133,6 +133,13 @@ class LLMEngine:
         source_paths: list[str]
     ) -> Dict[str, any]:
         """Generate an answer using retrieval-augmented generation."""
+        use_hosted_llm = os.getenv("SOCRATIC_USE_LLM", "").lower() in {"1", "true", "yes"}
+        if context_chunks and not use_hosted_llm:
+            return {
+                "answer": self._generate_local_context_answer(user_question, context_chunks, source_paths),
+                "source_context": source_paths[: len(context_chunks)]
+            }
+
         if not self.client:
             if context_chunks:
                 return {
@@ -220,7 +227,7 @@ If the user selected a specific code file, make that the primary focus of your a
 
         preview = "\n".join(non_empty_lines[:12])
         answer_parts = [
-            f"I found local context for `{primary_source}` and can give a grounded walkthrough without an external LLM key.",
+            f"I found local context for `{primary_source}` and can give a grounded walkthrough from the indexed code.",
             f"The file has about {len(lines)} lines, with {len(non_empty_lines)} non-empty lines.",
         ]
 

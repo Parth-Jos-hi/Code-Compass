@@ -163,15 +163,14 @@ async def get_repository_graph(repo_name: str = Query(...), db: Session = Depend
     return formatted_nodes
 
 
-@router.post("/socratic")
-async def socratic_query(payload: SocraticRequest, db: Session = Depends(get_db)):
-    """Answer a Socratic question using retrieval-augmented generation."""
-    question = payload.question
-    repo_name = payload.repo_name
-    node_id = payload.node_id
-    code_context = payload.code_context
-    repo_path = payload.repo_path
-
+def _build_socratic_answer(
+    question: str,
+    repo_name: str,
+    node_id: int | None,
+    code_context: str | None,
+    repo_path: str | None,
+    db: Session
+):
     node = None
     if node_id is not None:
         node = db.query(RepositoryNode).filter(
@@ -192,14 +191,17 @@ async def socratic_query(payload: SocraticRequest, db: Session = Depends(get_db)
             except Exception:
                 code_context = None
 
-    try:
-        results = search_semantic_context(
-            question,
-            repo_name,
-            n_results=24 if node is not None else 4
-        )
-    except Exception:
+    if code_context and node is not None:
         results = {}
+    else:
+        try:
+            results = search_semantic_context(
+                question,
+                repo_name,
+                n_results=24 if node is not None else 4
+            )
+        except Exception:
+            results = {}
     context_chunks = []
     source_paths = []
 
@@ -261,6 +263,38 @@ async def socratic_query(payload: SocraticRequest, db: Session = Depends(get_db)
         "answer": answer_payload["answer"],
         "source_context": answer_payload["source_context"]
     }
+
+
+@router.post("/socratic")
+async def socratic_query(payload: SocraticRequest, db: Session = Depends(get_db)):
+    """Answer a Socratic question using retrieval-augmented generation."""
+    return _build_socratic_answer(
+        question=payload.question,
+        repo_name=payload.repo_name,
+        node_id=payload.node_id,
+        code_context=payload.code_context,
+        repo_path=payload.repo_path,
+        db=db,
+    )
+
+
+@router.get("/socratic")
+async def socratic_query_get(
+    question: str = Query(...),
+    repo_name: str = Query(...),
+    node_id: int | None = Query(None),
+    repo_path: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    """Answer a Socratic question via GET to avoid browser POST/preflight issues."""
+    return _build_socratic_answer(
+        question=question,
+        repo_name=repo_name,
+        node_id=node_id,
+        code_context=None,
+        repo_path=repo_path,
+        db=db,
+    )
 
 
 @router.get("/file-content/{node_id}")

@@ -1,5 +1,5 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
-const REQUEST_TIMEOUT_MS = 25000;
+const REQUEST_TIMEOUT_MS = 60000;
 
 async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -213,20 +213,27 @@ export async function socraticQuery(
     repo_path: repoPath,
   };
 
-  const init: RequestInit = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  };
+  const query = new URLSearchParams({
+    question: payload.question,
+    repo_name: payload.repo_name,
+  });
+  if (payload.node_id !== undefined) {
+    query.set("node_id", String(payload.node_id));
+  }
+  if (payload.repo_path) {
+    query.set("repo_path", payload.repo_path);
+  }
+
+  const init: RequestInit = { method: "GET" };
 
   let response: Response;
   try {
-    response = await fetchWithTimeout(`${API_BASE_URL}/voyage/socratic`, init);
+    response = await fetchWithTimeout(`${API_BASE_URL}/voyage/socratic?${query.toString()}`, init);
   } catch (error) {
     if (API_BASE_URL === "/api") {
       throw new Error("Timed out waiting for the Socratic answer. Check that the backend is running on port 8000.");
     }
-    response = await fetchWithTimeout(`/api/voyage/socratic`, init);
+    response = await fetchWithTimeout(`/api/voyage/socratic?${query.toString()}`, init);
   }
 
   if (!response.ok) {
