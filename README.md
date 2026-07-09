@@ -18,9 +18,7 @@ A Full-Stack Codebase Map & Accelerated Learning Hub that transforms complex loc
 * [📄 Comprehensive MIT License Ledger](#-comprehensive-mit-license-ledger)
 * [📬 Contact & Support](#-contact--support)
 * [🙏 Acknowledgments](#-acknowledgments)
-
 ---
-
 ## 📝 About the Project
 
 **voidscout** is an engineered developer companion designed to eliminate the cognitive friction of navigating unfamiliar or massive software repositories. By parsing raw source directories locally, the application models structural file dependencies, measures architectural impact metrics, and projects modules as nodes within an interactive 3D WebGL sphere. Concurrently, code files are chunked with character-accurate boundary alignments and vectorized into a local database to prepare the system for semantic context tracking.
