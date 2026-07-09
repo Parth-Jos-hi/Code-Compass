@@ -1,6 +1,7 @@
 import os
 import json
 import math
+import re
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -21,6 +22,125 @@ class SocraticRequest(BaseModel):
     repo_path: str | None = None
 
 router = APIRouter(prefix="/api/voyage", tags=["Voyage Codebase Explorer"])
+
+
+SUPPORTED_FILE_REF_EXTENSIONS = ("py", "tsx", "ts", "jsx", "js", "json", "css", "java", "cpp", "hpp", "h", "c")
+
+
+def _wants_repo_overview(question: str) -> bool:
+    lowered = question.lower()
+    return any(phrase in lowered for phrase in [
+        "all files",
+        "all the files",
+        "entire repo",
+        "whole repo",
+        "full repo",
+        "this repo",
+        "repository",
+        "project structure",
+        "folder structure",
+        "all folders",
+        "explain the project",
+        "understand the project",
+    ])
+
+
+def _build_repo_overview_context(repo_name: str, db: Session) -> tuple[str, list[str]]:
+    nodes = db.query(RepositoryNode).filter(RepositoryNode.repo_name == repo_name).order_by(RepositoryNode.file_path).all()
+    if not nodes:
+        return f"Repository: {repo_name}\nNo indexed files found.", [f"repository:{repo_name}"]
+
+    folder_counts = {}
+    lines = [f"Repository: {repo_name}", f"Total indexed files: {len(nodes)}", "", "Folders:"]
+    for node in nodes:
+        folder = os.path.dirname(node.file_path).replace("\\", "/") or "."
+        folder_counts[folder] = folder_counts.get(folder, 0) + 1
+
+    for folder, count in sorted(folder_counts.items()):
+        lines.append(f"- {folder}: {count} file{'s' if count != 1 else ''}")
+
+    lines.extend(["", "Files:"])
+    for node in nodes:
+        imports = ", ".join(sorted(_imports_for_node(node))) or "none"
+        lines.append(f"- {node.file_path} | language={node.language} | imports={imports}")
+
+    return "\n".join(lines), [f"repository:{repo_name}"]
+
+
+def _read_node_content(node: RepositoryNode, repo_path: str | None) -> str | None:
+    resolved_path = None
+    if repo_path:
+        resolved_path = resolve_repository_file_path(os.path.join(repo_path, node.file_path))
+    if not resolved_path:
+        resolved_path = resolve_repository_file_path(node.file_path)
+    if not resolved_path:
+        return None
+    try:
+        with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    except Exception:
+        return None
+
+
+def _node_basename_tokens(node: RepositoryNode) -> set[str]:
+    base = os.path.basename(node.file_path).lower()
+    stem = os.path.splitext(base)[0]
+    return {base, stem}
+
+
+def _extract_file_references(question: str) -> set[str]:
+    extensions = "|".join(SUPPORTED_FILE_REF_EXTENSIONS)
+    references = set()
+    for match in re.finditer(rf"[\w./\\-]+\.({extensions})\b", question, flags=re.IGNORECASE):
+        references.add(match.group(0).replace("\\", "/").lower())
+    return references
+
+
+def _node_matches_reference(node: RepositoryNode, reference: str) -> bool:
+    normalized_path = node.file_path.replace("\\", "/").lower()
+    normalized_ref = reference.replace("\\", "/").lower()
+    return normalized_path.endswith(normalized_ref) or os.path.basename(normalized_path) == os.path.basename(normalized_ref)
+
+
+def _imports_for_node(node: RepositoryNode) -> set[str]:
+    if not node.imports_json:
+        return set()
+    try:
+        parsed = json.loads(node.imports_json)
+    except Exception:
+        return set()
+    return {str(item).lower() for item in parsed.get("imports", [])}
+
+
+def _find_related_nodes(question: str, repo_name: str, selected_node: RepositoryNode | None, db: Session, limit: int = 5) -> list[RepositoryNode]:
+    all_nodes = db.query(RepositoryNode).filter(RepositoryNode.repo_name == repo_name).all()
+    related = []
+    seen_ids = {selected_node.id} if selected_node else set()
+    file_refs = _extract_file_references(question)
+
+    def add_node(candidate: RepositoryNode):
+        if candidate.id in seen_ids:
+            return
+        related.append(candidate)
+        seen_ids.add(candidate.id)
+
+    for reference in file_refs:
+        for candidate in all_nodes:
+            if _node_matches_reference(candidate, reference):
+                add_node(candidate)
+
+    if selected_node:
+        selected_imports = _imports_for_node(selected_node)
+        selected_tokens = _node_basename_tokens(selected_node)
+        for candidate in all_nodes:
+            candidate_tokens = _node_basename_tokens(candidate)
+            candidate_imports = _imports_for_node(candidate)
+            if selected_imports.intersection(candidate_tokens):
+                add_node(candidate)
+            elif candidate_imports.intersection(selected_tokens):
+                add_node(candidate)
+
+    return related[:limit]
 
 @router.post("/index")
 async def index_repository(repo_path: str = Query(...), repo_name: str = Query(...), db: Session = Depends(get_db)):
@@ -171,6 +291,17 @@ def _build_socratic_answer(
     repo_path: str | None,
     db: Session
 ):
+    if _wants_repo_overview(question):
+        repo_context, repo_sources = _build_repo_overview_context(repo_name, db)
+        rag_engine = get_llm_engine()
+        answer_payload = rag_engine.generate_rag_answer(question, repo_name, [repo_context], repo_sources)
+        return {
+            "status": "success",
+            "question": question,
+            "answer": answer_payload["answer"],
+            "source_context": answer_payload["source_context"]
+        }
+
     node = None
     if node_id is not None:
         node = db.query(RepositoryNode).filter(
@@ -179,19 +310,12 @@ def _build_socratic_answer(
         ).first()
 
     if code_context is None and node:
-        resolved_path = None
-        if repo_path:
-            resolved_path = resolve_repository_file_path(os.path.join(repo_path, node.file_path))
-        if not resolved_path:
-            resolved_path = resolve_repository_file_path(node.file_path)
-        if resolved_path:
-            try:
-                with open(resolved_path, "r", encoding="utf-8", errors="ignore") as f:
-                    code_context = f.read()
-            except Exception:
-                code_context = None
+        code_context = _read_node_content(node, repo_path)
 
-    if code_context and node is not None:
+    if node is not None and not code_context:
+        code_context = f"// File: {node.file_path}\n// Content could not be loaded from the provided repository path."
+
+    if node is not None:
         results = {}
     else:
         try:
@@ -239,20 +363,20 @@ def _build_socratic_answer(
         else:
             source_paths = [repo_name] + source_paths
 
+    for related_node in _find_related_nodes(question, repo_name, node, db):
+        related_content = _read_node_content(related_node, repo_path)
+        if not related_content:
+            related_imports = ", ".join(sorted(_imports_for_node(related_node))) or "none recorded"
+            related_content = f"// File: {related_node.file_path}\n// Content could not be loaded.\n// Indexed imports: {related_imports}"
+        context_chunks.append(related_content)
+        source_paths.append(related_node.file_path)
+
     if not context_chunks and node:
         # Fallback to the resolved file itself if semantic retrieval does not return a match.
-        full_path = None
-        if repo_path:
-            full_path = resolve_repository_file_path(os.path.join(repo_path, node.file_path))
-        if not full_path:
-            full_path = resolve_repository_file_path(node.file_path)
-        try:
-            if full_path:
-                with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
-                    context_chunks = [f.read()]
-                    source_paths = [node.file_path]
-        except Exception:
-            pass
+        fallback_context = _read_node_content(node, repo_path)
+        if fallback_context:
+            context_chunks = [fallback_context]
+            source_paths = [node.file_path]
 
     rag_engine = get_llm_engine()
     answer_payload = rag_engine.generate_rag_answer(question, repo_name, context_chunks, source_paths)

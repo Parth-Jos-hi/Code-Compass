@@ -68,9 +68,20 @@ def extract_dependencies(content:str,language:str)->list:
     """
     dependencies = []
     if language == "Python":
-        matches = re.findall(r'^\s*(?:import|from)\s+([a-zA-Z0-9_\.]+)', content, re.MULTILINE)
-        for match in matches:
-            dependencies.append(match.split('.')[0])
+        import_matches = re.findall(r'^\s*import\s+([a-zA-Z0-9_\.]+)', content, re.MULTILINE)
+        for match in import_matches:
+            parts = match.split('.')
+            dependencies.append(parts[-1] if len(parts) > 1 else parts[0])
+
+        from_matches = re.findall(r'^\s*from\s+([a-zA-Z0-9_\.]+)\s+import\s+([a-zA-Z0-9_, *]+)', content, re.MULTILINE)
+        for module_path, imported_names in from_matches:
+            module_parts = module_path.split('.')
+            if module_parts:
+                dependencies.append(module_parts[-1])
+            for imported_name in imported_names.split(','):
+                clean_name = imported_name.strip().split(" as ")[0]
+                if clean_name and clean_name != "*":
+                    dependencies.append(clean_name)
     # 2. Matches Frontend TSX/TS/JS imports: 'import Navbar from "../components/Navbar"'
     elif language in ["TypeScript (React)", "TypeScript", "JavaScript (React)", "JavaScript"]:
         matches = re.findall(r'from\s+[\'"]([\w\.\-/]+)[\'"]', content)

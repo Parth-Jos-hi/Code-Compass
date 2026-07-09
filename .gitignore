@@ -9,6 +9,8 @@ __pycache__/
 backend/.venv/
 
 # Local backend storage and logs
+data/
+chroma_data/
 backend/local_compass.db
 backend/data/
 backend/chroma_data/
