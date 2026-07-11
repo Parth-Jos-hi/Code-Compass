@@ -132,8 +132,15 @@ class LLMEngine:
         context_chunks: list[str],
         source_paths: list[str]
     ) -> Dict[str, any]:
-        """Generate an answer using retrieval-augmented generation."""
-        use_hosted_llm = os.getenv("SOCRATIC_USE_LLM", "").lower() in {"1", "true", "yes"}
+        # Use hosted LLM if explicitly enabled, or if not specified but we have a valid client.
+        socratic_use_llm_env = os.getenv("SOCRATIC_USE_LLM", "").lower()
+        if socratic_use_llm_env in {"1", "true", "yes"}:
+            use_hosted_llm = True
+        elif socratic_use_llm_env in {"0", "false", "no"}:
+            use_hosted_llm = False
+        else:
+            use_hosted_llm = self.client is not None
+
         if context_chunks and not use_hosted_llm:
             return {
                 "answer": self._generate_local_context_answer(user_question, context_chunks, source_paths),
@@ -550,7 +557,8 @@ If the user selected a specific code file, make that the primary focus of your a
         self,
         code_content: str,
         file_path: str,
-        num_questions: int = 3
+        num_questions: int = 5,
+        avoid_questions: list[str] = None
     ) -> Dict[str, any]:
         """
         Generate questions about given code using LLM.
@@ -559,6 +567,7 @@ If the user selected a specific code file, make that the primary focus of your a
             code_content: The code to generate questions about
             file_path: File path for context
             num_questions: Number of questions to generate
+            avoid_questions: Optional list of question texts to avoid generating again
         
         Returns:
             Dict with list of questions
@@ -567,10 +576,21 @@ If the user selected a specific code file, make that the primary focus of your a
             return {"questions": []}
         
         try:
-            prompt = f"""Analyze this code file ({file_path}) and generate {num_questions} questions to test understanding.
-Generate a mix of question types: some MCQ (multiple choice) and some free-text.
+            avoid_clause = ""
+            if avoid_questions:
+                avoid_clause = f"\nDo NOT generate any questions that are similar to or duplicate the following existing questions:\n" + "\n".join(f"- {q}" for q in avoid_questions)
 
-For MCQ questions, include 4 options. For free-text questions, provide what a good answer should cover.
+            prompt = f"""Analyze this code file ({file_path}) and generate exactly {num_questions} questions to test understanding.
+You MUST generate them in the following exact sequence of difficulties:
+1. Question 1: Easy difficulty
+2. Question 2: Medium difficulty
+3. Question 3: Medium difficulty
+4. Question 4: Medium-Hard difficulty
+5. Question 5: Hard difficulty
+
+Generate a mix of question types: some MCQ (multiple choice) and some free-text. {avoid_clause}
+
+For MCQ questions, include 4 options. For free-text questions, provide what a good answer should cover in correct_answer.
 
 Return ONLY a JSON array of question objects with this structure:
 [

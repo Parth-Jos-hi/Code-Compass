@@ -7,7 +7,7 @@ import FloatingAssets from '../components/FloatingAssets';
 import FileTreeGraph from '../components/FileTreeGraph';
 import QuestionModule from '../components/QuestionModule';
 import DynamicSidebar from '../components/DynamicSidebar';
-import { indexLocalRepository, getRepositoryNodes, getQuestionsForNode, IndexResponse, CodeNode, Question } from '../services/api';
+import { indexLocalRepository, getRepositoryNodes, getQuestionsForNode, generateQuestionsForNode, IndexResponse, CodeNode, Question } from '../services/api';
 
 export default function Home() {
   const [repoPath, setRepoPath] = useState("");
@@ -19,6 +19,7 @@ export default function Home() {
   const [nodeQuestions, setNodeQuestions] = useState<Question[]>([]);
   const [showQuestions, setShowQuestions] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   const handleScanSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,14 +45,23 @@ export default function Home() {
   const handleNodeSelect = async (node: CodeNode) => {
     setSelectedNode(node);
     setShowQuestions(true);
+    setNodeQuestions([]);
+    setLoadingQuestions(true);
     
     // Try to fetch questions for this node
     try {
-      const questions = await getQuestionsForNode(parseInt(node.id), repoName);
+      let questions = await getQuestionsForNode(parseInt(node.id), repoName);
+      if (questions.length === 0) {
+        // Automatically request the backend to generate questions if none exist yet
+        await generateQuestionsForNode(parseInt(node.id), repoName);
+        questions = await getQuestionsForNode(parseInt(node.id), repoName);
+      }
       setNodeQuestions(questions);
     } catch (err) {
       console.error('Failed to fetch questions:', err);
       setNodeQuestions([]);
+    } finally {
+      setLoadingQuestions(false);
     }
   };
 
@@ -165,7 +175,7 @@ export default function Home() {
         </section>
 
         {/* Questions Section */}
-        {showQuestions && selectedNode && nodeQuestions.length > 0 && (
+        {showQuestions && selectedNode && (
           <section className="space-y-4">
             <div className="flex items-center justify-between border-b border-neutral-900 pb-4">
               <div>
@@ -173,20 +183,30 @@ export default function Home() {
                 <p className="text-xs text-neutral-500">Answer questions to master this module • LLM evaluates automatically</p>
               </div>
             </div>
-            <QuestionModule 
-              questions={nodeQuestions} 
-              nodeId={parseInt(selectedNode.id)} 
-              filePath={selectedNode.file_path}
-              onAnswerSubmitted={() => {
-                // Refresh node data to show updated mastery status
-                if (selectedNode) {
-                  const updated = liveNodes.find(n => n.id === selectedNode.id);
-                  if (updated) {
-                    setSelectedNode(updated);
+            {loadingQuestions ? (
+              <div className="p-8 bg-[#050505] border border-neutral-900 rounded-2xl text-center text-xs text-neutral-400">
+                <span className="inline-block animate-pulse mr-2">🔄</span> Generating questions for <code className="text-rose-500">{selectedNode.file_path.split('/').pop()}</code> using LLM. Please wait...
+              </div>
+            ) : nodeQuestions.length > 0 ? (
+              <QuestionModule 
+                questions={nodeQuestions} 
+                nodeId={parseInt(selectedNode.id)} 
+                filePath={selectedNode.file_path}
+                onAnswerSubmitted={() => {
+                  // Refresh node data to show updated mastery status
+                  if (selectedNode) {
+                    const updated = liveNodes.find(n => n.id === selectedNode.id);
+                    if (updated) {
+                      setSelectedNode(updated);
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            ) : (
+              <div className="p-8 bg-[#050505] border border-neutral-900 rounded-2xl text-center text-xs text-neutral-500">
+                No questions found or generated for this file.
+              </div>
+            )}
           </section>
         )}
 

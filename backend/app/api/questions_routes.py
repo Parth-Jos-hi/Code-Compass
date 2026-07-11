@@ -31,6 +31,10 @@ class SubmitAnswerRequest(BaseModel):
     user_response: str
 
 
+class GenerateQuestionsRequest(BaseModel):
+    repo_name: str
+
+
 class SubmitAnswerResponse(BaseModel):
     score: float
     feedback: str
@@ -197,7 +201,7 @@ async def get_mastery_status(
 @router.post("/generate-questions/{node_id}")
 async def generate_questions_for_node(
     node_id: int,
-    repo_name: str,
+    payload: GenerateQuestionsRequest,
     db: Session = Depends(get_db)
 ):
     """
@@ -205,6 +209,7 @@ async def generate_questions_for_node(
     """
     import os
     
+    repo_name = payload.repo_name
     node = db.query(RepositoryNode).filter(
         RepositoryNode.id == node_id,
         RepositoryNode.repo_name == repo_name
