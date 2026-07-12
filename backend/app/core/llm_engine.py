@@ -674,7 +674,7 @@ Assess accuracy and completeness. Respond with JSON: {{"score": <0.0-1.0>, "feed
                 return {
                     "score": score,
                     "feedback": parsed.get("feedback", "No feedback provided"),
-                    "is_correct": parsed.get("is_correct", score >= 0.75)
+                    "is_correct": score >= 0.75
                 }
         except Exception as e:
             pass

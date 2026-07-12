@@ -129,12 +129,17 @@ async def evaluate_answer(
         ).filter(Question.node_id == question.node_id).all()
         
         if all_answers:
-            avg_score = sum(a.llm_score for a in all_answers) / len(all_answers)
+            # Calculate average score as the ratio of correct answers
+            correct_count = sum(1 for a in all_answers if a.is_correct)
+            avg_score = correct_count / len(all_answers)
             node.avg_score = avg_score
             
-            # Auto-master if >= 75%
-            if avg_score >= 0.75:
+            # Auto-master only if they have answered all questions and accuracy is >= 75%
+            total_questions = db.query(func.count(Question.id)).filter(Question.node_id == question.node_id).scalar() or 0
+            if len(all_answers) >= total_questions and avg_score >= 0.75:
                 node.is_mastered = True
+            else:
+                node.is_mastered = False
             
             db.commit()
         else:
@@ -218,6 +223,21 @@ async def generate_questions_for_node(
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     
+    # Find existing questions for this node to avoid duplicate/similar ones
+    old_questions = db.query(Question).filter(Question.node_id == node_id).all()
+    avoid_texts = [q.question_text for q in old_questions]
+    
+    # Delete old answers and questions associated with this node
+    old_question_ids = [q.id for q in old_questions]
+    if old_question_ids:
+        db.query(UserAnswer).filter(UserAnswer.question_id.in_(old_question_ids)).delete(synchronize_session=False)
+        db.query(Question).filter(Question.node_id == node_id).delete(synchronize_session=False)
+    
+    # Reset node average score and mastery
+    node.avg_score = 0.0
+    node.is_mastered = False
+    db.commit()
+    
     # Read the actual code file
     file_path = node.file_path
     code_content = ""
@@ -237,11 +257,12 @@ async def generate_questions_for_node(
     
     llm = get_llm_engine()
     
-    # Generate questions with actual code
+    # Generate exactly 5 questions with actual code, avoiding the old ones
     result = llm.generate_questions(
         code_content=code_content,
         file_path=file_path,
-        num_questions=3
+        num_questions=5,
+        avoid_questions=avoid_texts
     )
     
     # Store generated questions

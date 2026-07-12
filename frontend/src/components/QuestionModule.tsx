@@ -9,6 +9,7 @@ interface QuestionModuleProps {
   nodeId: number;
   filePath: string;
   onAnswerSubmitted?: (evaluation: AnswerEvaluation) => void;
+  onQuizComplete?: () => void;
 }
 
 export default function QuestionModule({
@@ -16,6 +17,7 @@ export default function QuestionModule({
   nodeId,
   filePath,
   onAnswerSubmitted,
+  onQuizComplete,
 }: QuestionModuleProps) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState('');
@@ -77,6 +79,9 @@ export default function QuestionModule({
       setSelectedAnswer('');
       setEvaluation(null);
       setShowFeedback(false);
+      if (onQuizComplete) {
+        onQuizComplete();
+      }
     }
   };
 

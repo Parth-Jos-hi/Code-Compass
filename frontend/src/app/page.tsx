@@ -7,7 +7,7 @@ import FloatingAssets from '../components/FloatingAssets';
 import FileTreeGraph from '../components/FileTreeGraph';
 import QuestionModule from '../components/QuestionModule';
 import DynamicSidebar from '../components/DynamicSidebar';
-import { indexLocalRepository, getRepositoryNodes, getQuestionsForNode, generateQuestionsForNode, IndexResponse, CodeNode, Question } from '../services/api';
+import { indexLocalRepository, getRepositoryNodes, getQuestionsForNode, generateQuestionsForNode, getMasteryStatus, IndexResponse, CodeNode, Question } from '../services/api';
 
 export default function Home() {
   const [repoPath, setRepoPath] = useState("");
@@ -199,6 +199,29 @@ export default function Home() {
                     if (updated) {
                       setSelectedNode(updated);
                     }
+                  }
+                }}
+                onQuizComplete={async () => {
+                  if (!selectedNode) return;
+                  try {
+                    const status = await getMasteryStatus(parseInt(selectedNode.id), repoName);
+                    const accuracy = status.total_questions_answered > 0
+                      ? (status.correct_answers / status.total_questions_answered)
+                      : 0;
+                    
+                    if (accuracy < 0.75) {
+                      alert(`Your quiz accuracy was ${Math.round(accuracy * 100)}% (which is less than the required 75%). We will now automatically regenerate a new set of 5 distinct questions for you to try again!`);
+                      setLoadingQuestions(true);
+                      setNodeQuestions([]);
+                      await generateQuestionsForNode(parseInt(selectedNode.id), repoName);
+                      const freshQuestions = await getQuestionsForNode(parseInt(selectedNode.id), repoName);
+                      setNodeQuestions(freshQuestions);
+                      setLoadingQuestions(false);
+                    } else {
+                      alert(`Congratulations! You passed the quiz with ${Math.round(accuracy * 100)}% accuracy and mastered this module!`);
+                    }
+                  } catch (err) {
+                    console.error("Error checking mastery status at quiz completion:", err);
                   }
                 }}
               />
