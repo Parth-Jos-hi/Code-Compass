@@ -76,6 +76,13 @@ export default function DynamicSidebar({ selectedNode, liveNodes, setLiveNodes, 
     await submitQuestion(chatInput);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitQuestion(chatInput);
+    }
+  };
+
   return (
     <div className="w-full h-[580px]">
       {selectedNode ? (
@@ -165,7 +172,7 @@ export default function DynamicSidebar({ selectedNode, liveNodes, setLiveNodes, 
             {/* TAB 2: SOCRATIC RAG CONSOLE */}
             {activeTab === 'rag' && (
               <div className="flex flex-col h-full space-y-2 animate-in fade-in duration-200">
-                <div className="flex-1 bg-[#0a0a0a] border border-neutral-900/80 rounded-xl p-3 text-[11px] font-mono space-y-3 h-52 overflow-y-auto no-scrollbar">
+                <div className="flex-1 bg-[#0a0a0a] border border-neutral-900/80 rounded-xl p-3 text-[11px] font-mono space-y-3 h-[220px] overflow-y-auto no-scrollbar">
                   {chatLog.map((msg, idx) => (
                     <div key={idx} className={`p-2 rounded-lg ${msg.role === 'user' ? 'bg-rose-950/20 text-rose-300 ml-4 border border-rose-900/20' : 'bg-neutral-900 text-neutral-300 mr-4 border border-neutral-800'}`}>
                       <span className="block text-[8px] font-bold opacity-40 uppercase mb-0.5">{msg.role}</span>
@@ -186,17 +193,25 @@ export default function DynamicSidebar({ selectedNode, liveNodes, setLiveNodes, 
                     </button>
                   ))}
                 </div>
-                <form onSubmit={handleSendMessage} className="flex gap-2 pt-1">
-                  <input 
-                    type="text" 
+                <form onSubmit={handleSendMessage} className="flex flex-col gap-2 pt-1">
+                  <textarea 
                     placeholder="Ask anything about this file..."
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    className="flex-1 bg-[#0c0c0c] border border-neutral-800 rounded-xl px-3 py-2 text-[11px] text-white focus:outline-none focus:border-rose-500 font-medium"
+                    onKeyDown={handleKeyDown}
+                    rows={2}
+                    className="w-full bg-[#0c0c0c] border border-neutral-800 rounded-xl px-3 py-2 text-[12px] text-white focus:outline-none focus:border-rose-500 font-medium resize-none"
                   />
-                  <button disabled={ragLoading} type="submit" className="coral-glow-btn text-white px-3.5 rounded-xl text-xs font-bold cursor-pointer">
-                    {ragLoading ? '...' : '→'}
-                  </button>
+                  <div className="flex justify-between items-center text-[9px] text-neutral-500 font-medium">
+                    <span>Press Enter to send, Shift+Enter for new line</span>
+                    <button 
+                      disabled={ragLoading} 
+                      type="submit" 
+                      className="coral-glow-btn text-white px-4 py-1.5 rounded-xl text-xs font-bold cursor-pointer transition-colors"
+                    >
+                      {ragLoading ? 'Asking...' : 'Ask Scout'}
+                    </button>
+                  </div>
                 </form>
                 {ragError && <p className="text-[10px] text-red-400 mt-2">{ragError}</p>}
               </div>

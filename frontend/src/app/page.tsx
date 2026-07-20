@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
-import MediaFrame from '../components/MediaFrame';
 import FloatingAssets from '../components/FloatingAssets';
 import FileTreeGraph from '../components/FileTreeGraph';
 import QuestionModule from '../components/QuestionModule';
@@ -73,67 +72,60 @@ export default function Home() {
       {/* Main Content Sections Wrapper */}
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-24 space-y-24 relative z-10">
         
-        {/* Luxury Asymmetric Hero and Form Layout Split */}
-        <section className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        {/* Centered Hero and Form Layout */}
+        <section className="max-w-3xl mx-auto text-center space-y-12 py-12">
           
-          {/* Left Text and Form Column */}
-          <div className="lg:col-span-5 space-y-8">
-            <div className="space-y-4">
-              <span className="text-xs font-bold tracking-[0.3em] uppercase text-rose-500">Voyage Engine v2.0</span>
-              <h2 className="text-5xl font-black tracking-tight leading-tight text-white">
-                Interactive file tree <br />
-                <span className="text-neutral-400">with smart learning.</span>
-              </h2>
-              <p className="text-sm text-neutral-400 leading-relaxed max-w-sm">
-                Navigate your codebase with an intuitive file tree. Answer questions to master modules. LLM evaluates your understanding automatically.
-              </p>
+          {/* Centered Text Column */}
+          <div className="space-y-4">
+            <span className="text-xs font-bold tracking-[0.3em] uppercase text-rose-500">Voyage Engine v2.0</span>
+            <h2 className="text-5xl font-black tracking-tight leading-tight text-white">
+              Interactive file tree <br />
+              <span className="text-neutral-400">with smart learning.</span>
+            </h2>
+            <p className="text-sm text-neutral-400 leading-relaxed mx-auto max-w-lg">
+              Navigate your codebase with an intuitive file tree. Answer questions to master modules. LLM evaluates your understanding automatically.
+            </p>
+          </div>
+
+          {/* Premium Command Form Component (Centered) */}
+          <form onSubmit={handleScanSubmit} className="neon-glow-card premium-border-glow p-8 rounded-2xl space-y-6 text-left max-w-xl mx-auto">
+            <div>
+              <label className="block text-[10px] font-bold tracking-wider text-neutral-400 uppercase mb-2">Project Identifier</label>
+              <input 
+                type="text"
+                placeholder="e.g. Aegis-SR"
+                value={repoName}
+                onChange={(e) => setRepoName(e.target.value)}
+                className="w-full bg-[#111] border border-neutral-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-rose-500 transition-colors font-medium"
+                required
+              />
             </div>
+            <div>
+              <label className="block text-[10px] font-bold tracking-wider text-neutral-400 uppercase mb-2">Absolute Path Location</label>
+              <input 
+                type="text"
+                placeholder="C:/Users/name/projects/my-app"
+                value={repoPath}
+                onChange={(e) => setRepoPath(e.target.value)}
+                className="w-full bg-[#111] border border-neutral-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:outline-none focus:border-rose-500 transition-colors"
+                required
+              />
+            </div>
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full coral-glow-btn text-white text-xs font-bold py-3.5 px-4 rounded-xl cursor-pointer disabled:opacity-50"
+            >
+              {loading ? "Scouting Repository Blocks..." : "Initialize Exploration"}
+            </button>
 
-            {/* Premium Command Form Component */}
-            <form onSubmit={handleScanSubmit} className="neon-glow-card premium-border-glow p-6 rounded-2xl space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold tracking-wider text-neutral-400 uppercase mb-2">Project Identifier</label>
-                <input 
-                  type="text"
-                  placeholder="e.g. Aegis-SR"
-                  value={repoName}
-                  onChange={(e) => setRepoName(e.target.value)}
-                  className="w-full bg-[#111] border border-neutral-800 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-rose-500 transition-colors font-medium"
-                  required
-                />
+            {error && (
+              <div className="p-3 bg-red-950/30 border border-red-900/50 rounded-xl text-[11px] text-red-400 font-medium">
+                ⚠️ {error}
               </div>
-              <div>
-                <label className="block text-[10px] font-bold tracking-wider text-neutral-400 uppercase mb-2">Absolute Path Location</label>
-                <input 
-                  type="text"
-                  placeholder="C:/Users/name/projects/my-app"
-                  value={repoPath}
-                  onChange={(e) => setRepoPath(e.target.value)}
-                  className="w-full bg-[#111] border border-neutral-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:outline-none focus:border-rose-500 transition-colors"
-                  required
-                />
-              </div>
-              
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full coral-glow-btn text-white text-xs font-bold py-3.5 px-4 rounded-xl cursor-pointer disabled:opacity-50"
-              >
-                {loading ? "Scouting Repository Blocks..." : "Initialize Exploration"}
-              </button>
-
-              {error && (
-                <div className="p-3 bg-red-950/30 border border-red-900/50 rounded-xl text-[11px] text-red-400 font-medium">
-                  ⚠️ {error}
-                </div>
-              )}
-            </form>
-          </div>
-
-          {/* Right Image Layout Column */}
-          <div className="lg:col-span-7 flex justify-end">
-            <MediaFrame scanResult={scanResult} />
-          </div>
+            )}
+          </form>
         </section>
 
         {/* File Tree Graph & Sidebar Split Grid */}
@@ -148,8 +140,8 @@ export default function Home() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            <div className="lg:col-span-3 h-[580px] rounded-2xl overflow-hidden bg-[#050505] border border-neutral-900 shadow-inner relative">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 h-[580px] rounded-2xl overflow-hidden bg-[#050505] border border-neutral-900 shadow-inner relative">
               {liveNodes.length > 0 ? (
                 <FileTreeGraph nodes={liveNodes} selectedNode={selectedNode} onSelectNode={handleNodeSelect} />
               ) : (
@@ -161,7 +153,7 @@ export default function Home() {
               )}
             </div>
 
-            <div className="lg:col-span-1">
+            <div className="lg:col-span-4">
               <DynamicSidebar 
                 selectedNode={selectedNode} 
                 liveNodes={liveNodes} 

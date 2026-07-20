@@ -86,19 +86,22 @@ export default function QuestionModule({
   };
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-6 max-w-2xl mx-auto">
-      <div className="mb-6">
+    <div className="bg-[#0c0c0c] border border-neutral-900 rounded-2xl p-8 max-w-4xl mx-auto shadow-2xl premium-border-glow">
+      <div className="mb-8 border-b border-neutral-900 pb-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-white">
-            {filePath.split('/').pop()}
-          </h2>
-          <span className="text-sm text-gray-400">
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-black tracking-tight text-white font-mono">
+              {filePath.split('/').pop()}
+            </h2>
+            <div className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+          </div>
+          <span className="text-xs font-mono font-bold text-neutral-400 uppercase tracking-wider">
             Question {currentQuestionIndex + 1} of {questions.length}
           </span>
         </div>
-        <div className="w-full bg-gray-700 rounded-full h-1">
+        <div className="w-full bg-neutral-900 rounded-full h-1.5 overflow-hidden">
           <div
-            className="bg-blue-600 h-1 rounded-full transition-all"
+            className="bg-rose-500 h-1.5 rounded-full transition-all duration-300"
             style={{
               width: `${((currentQuestionIndex + 1) / questions.length) * 100}%`,
             }}
@@ -106,8 +109,8 @@ export default function QuestionModule({
         </div>
       </div>
 
-      <div className="mb-6">
-        <h3 className="text-lg text-gray-200 mb-6">
+      <div className="mb-8">
+        <h3 className="text-xl font-bold text-neutral-200 mb-6 leading-relaxed">
           {currentQuestion.question_text}
         </h3>
 
@@ -116,10 +119,10 @@ export default function QuestionModule({
             {options.map((option: string, index: number) => (
               <label
                 key={index}
-                className={`flex items-center p-4 border rounded-lg cursor-pointer transition-colors ${
+                className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${
                   selectedAnswer === option
-                    ? 'bg-blue-900 border-blue-600'
-                    : 'bg-gray-700 border-gray-600 hover:border-gray-500'
+                    ? 'bg-rose-950/20 border-rose-500 text-white font-bold'
+                    : 'bg-neutral-900 border-neutral-800 hover:border-neutral-700 text-neutral-300'
                 }`}
               >
                 <input
@@ -129,9 +132,9 @@ export default function QuestionModule({
                   checked={selectedAnswer === option}
                   onChange={(e) => setSelectedAnswer(e.target.value)}
                   disabled={loading || showFeedback}
-                  className="mr-3"
+                  className="mr-3 accent-rose-500"
                 />
-                <span className="text-gray-200">{option}</span>
+                <span className="text-sm">{option}</span>
               </label>
             ))}
           </div>
@@ -140,17 +143,17 @@ export default function QuestionModule({
             value={selectedAnswer}
             onChange={(e) => setSelectedAnswer(e.target.value)}
             disabled={loading || showFeedback}
-            placeholder="Type your answer here..."
-            className="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-gray-200 placeholder-gray-500 focus:border-blue-600 focus:outline-none resize-vertical min-h-24"
+            placeholder="Type your detailed answer here..."
+            className="w-full bg-neutral-900 border border-neutral-800 rounded-xl p-4 text-white text-sm placeholder-neutral-600 focus:border-rose-500 focus:outline-none resize-y min-h-48 transition-colors leading-relaxed"
           />
         )}
       </div>
 
       {showFeedback && evaluation && (
-        <div className={`mb-6 p-4 rounded-lg border ${
+        <div className={`mb-8 p-6 rounded-xl border ${
           evaluation.is_correct
-            ? 'bg-green-900 border-green-600'
-            : 'bg-red-900 border-red-600'
+            ? 'bg-green-950/20 border-green-900/50 text-green-300'
+            : 'bg-red-950/20 border-red-900/50 text-red-300'
         }`}>
           <div className="flex items-center gap-2 mb-2">
             {evaluation.is_correct ? (
@@ -158,28 +161,28 @@ export default function QuestionModule({
             ) : (
               <XCircleIcon size={20} className="text-red-400" />
             )}
-            <span className="font-bold text-white">
+            <span className="font-black uppercase tracking-wider text-sm">
               {evaluation.is_correct ? 'Correct!' : 'Incorrect'}
             </span>
           </div>
-          <p className="text-gray-200 mb-3">
+          <p className="text-lg font-mono font-black text-white mb-3">
             Score: {(evaluation.score * 100).toFixed(1)}%
           </p>
-          <p className="text-sm text-gray-300 mb-3">
+          <p className="text-sm text-neutral-300 leading-relaxed mb-3">
             {evaluation.feedback}
           </p>
           {evaluation.mastery_eligible && (
-            <div className="text-sm text-green-300 font-semibold">
+            <div className="text-xs text-green-400 font-bold uppercase tracking-wider">
               ✓ You are eligible for mastery (75%+ average)
             </div>
           )}
         </div>
       )}
 
-      <div className="flex gap-3 justify-between">
-        <div className="text-sm text-gray-400">
+      <div className="flex gap-4 justify-between items-center">
+        <div className="text-xs font-mono font-bold text-neutral-500">
           {answeredQuestions.has(currentQuestion.id) && (
-            <span className="text-green-400">✓ Answered</span>
+            <span className="text-green-400 uppercase tracking-widest">✓ Answered</span>
           )}
         </div>
         <div className="flex gap-3">
@@ -187,15 +190,15 @@ export default function QuestionModule({
             <button
               onClick={handleSubmitAnswer}
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="coral-glow-btn text-white font-bold py-3 px-6 rounded-xl cursor-pointer disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
               {loading && <Loader2Icon size={16} className="animate-spin" />}
-              {loading ? 'Evaluating...' : 'Submit Answer'}
+              {loading ? 'Evaluating Answer...' : 'Submit Answer'}
             </button>
           ) : (
             <button
               onClick={handleNextQuestion}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl cursor-pointer transition-colors"
             >
               {currentQuestionIndex === questions.length - 1
                 ? 'Finish Quiz'
