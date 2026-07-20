@@ -1,186 +1,185 @@
-Markdown
-# voidscout
+# 🗺️ Code-Compass (voidscout)
 
-A Full-Stack Codebase Map & Accelerated Learning Hub that transforms complex local code repositories into interactive, floating 3D constellation maps while indexing textual components for deep semantic exploration.
+**Code-Compass (voidscout)** is a Full-Stack Codebase Map & Accelerated Learning Hub. It parses local software repositories, models structural dependencies, computes module impact metrics, and visualizes codebase architectures as interactive 3D WebGL constellation maps. Additionally, it indexes codebase segments into a local vector database, enabling deep semantic exploration via a Socratic RAG chat interface and custom module mastery assessments (quizzes) evaluated by an LLM.
 
 ---
 
 ## 📋 Table of Contents
-* [About the Project](#-about-the-project)
-* [Core Architecture Architecture](#%EF%B8%8F-core-architecture)
-* [✨ Features](#-features)
-* [🚀 Getting Started](#-getting-started)
-  * [Prerequisites](#prerequisites)
-  * [Installation & Dependency Alignment](#installation--dependency-alignment)
-* [💡 Usage Guide](#-usage-guide)
-* [🧪 Verification & Testing Matrix](#-verification--testing-matrix)
-* [🤝 Detailed Contribution Framework](#-detailed-contribution-framework)
-* [📄 Comprehensive Apache License 2.0 Ledger](#-comprehensive-apache-license-20-ledger)
-* [📬 Contact & Support](#-contact--support)
-* [🙏 Acknowledgments](#-acknowledgments)
----
-## 📝 About the Project
+1. [✨ Features](#-features)
+2. [🏗️ Core Architecture](#%EF%B8%8F-core-architecture)
+3. [🚀 Getting Started](#-getting-started)
+   - [Method A: Docker (Recommended)](#method-a-docker-recommended-fastest)
+   - [Method B: Local Execution (Windows)](#method-b-local-execution-windows)
+4. [💡 Usage Guide](#-usage-guide)
+5. [🧪 Verification & Testing](#-verification--testing)
+6. [🛠️ Troubleshooting](#%EF%B8%8F-troubleshooting)
+7. [🤝 Contribution Framework](#-contribution-framework)
+8. [📄 License](#-license)
+9. [📬 Contact & Support](#-contact--support)
 
-**voidscout** is an engineered developer companion designed to eliminate the cognitive friction of navigating unfamiliar or massive software repositories. By parsing raw source directories locally, the application models structural file dependencies, measures architectural impact metrics, and projects modules as nodes within an interactive 3D WebGL sphere. Concurrently, code files are chunked with character-accurate boundary alignments and vectorized into a local database to prepare the system for semantic context tracking.
+---
+
+## ✨ Features
+
+- **3D Constellation Mapping**: Visualizes repository layouts as three-dimensional interactive constellations using **React Three Fiber (R3F) + Three.js**.
+- **Algorithmic Node Allocation**: Automatically maps nodes dynamically to avoid overlap while adjusting size based on code import impact and dependency depth.
+- **Vectorized Data Pipeline**: Segments source files into text blocks with overlap buffers, vectorizing and storing indices inside **ChromaDB** for real-time semantic queries.
+- **Socratic RAG Chat Console**: Ask detailed conceptual, structural, or debugging questions about specific files through a multiline textarea integrated directly into the wider inspector sidebar.
+- **Mastery Tracker & Quiz Engine**: Re-evaluates understanding through LLM-generated questions. Mastery progress is tracked in a local **SQLite** database, color-coding mastered modules in real-time when achieving a $\ge 75\%$ accuracy threshold.
+- **Clean Header Navigation**: A streamlined navigation system featuring the minimalist logo `void-Scout.` for a clutter-free visualization canvas.
 
 ---
 
 ## 🏗️ Core Architecture
 
-The system operates as an asymmetrical full-stack layout split into a high-performance WebGL browser interface and a local background orchestration worker engine:
+The project splits into a high-performance WebGL presentation layer and a fast local API orchestration worker service:
 
 ```text
-frontend/ (Next.js + TypeScript + React Three Fiber)
-├── src/
-    ├── app/               # Dashboard Grid Layout, Styles, & Core State Sync
-    ├── components/        # Three.js WebGL Canvas Engine & Dynamic Sidebar Inspector
-    └── services/          # Fetch API Connection Wrappers & Type Interfaces
+Code-Compass/
+├── frontend/ (Next.js + TypeScript + React Three Fiber + TailwindCSS)
+│   ├── src/
+│   │   ├── app/            # Dashboard layout, style bindings, & core state sync
+│   │   ├── components/     # Three.js WebGL canvas and dynamic sidebar components
+│   │   └── services/       # API call handlers & type definitions
+│   └── Dockerfile          # Multi-stage production build script
+│
+├── backend/ (FastAPI + Python 3.12 + ChromaDB + SQLite + Uvicorn)
+│   ├── app/
+│   │   ├── api/            # Route controllers (ingestion, vector nodes, metrics)
+│   │   ├── core/           # Dependency parsers, LLM agents, & ChromaDB engine
+│   │   └── db/             # SQLite database schemas and persistence handlers
+│   └── Dockerfile          # Production runtime wrapper config
+```
 
-backend/ (FastAPI + Python 3.10+)
-├── app/
-    ├── api/               # Router Endpoints (Ingestion, Node Vectors, Mastery State)
-    ├── core/              # Code Parsers & ChromaDB Vector Embedding Engine
-    └── db/                # SQLite Database Target Schemas & Persistence Handlers
-✨ Features
-3D Constellation Mapping: Visualizes system modules as floating orbital stars inside an interactive, high-performance WebGL scene utilizing React Three Fiber.
+---
 
-Algorithmic Node Allocation: Implements a mathematical layout configuration to prevent coordinate overlap and uniformly space architectural assets.
+## 🚀 Getting Started
 
-Dependency & Impact Evaluation: Automated localized parsers extract module elements to calculate an objective impact score for dynamic node sizing.
+### Method A: Docker (Recommended, Fastest)
 
-Vectorized Data Pipeline: Slices source files into synchronized text chunks with protective overlap buffers, storing tokens directly inside ChromaDB for fast retrieval.
+Runs both components inside containers without worrying about installing compilers or python build tools locally.
 
-Exploration Progress Persistence: Integrates interactive mastery state triggers that commit progress straight to a persistent local SQLite engine, color-coding mastered files dynamically in real-time.
+#### Prerequisites
+- **Docker Desktop** installed, running, and configured on your path.
 
-🚀 Getting Started
-Follow these precise steps to construct and deploy an operational local copy of the voidscout pipeline environment.
+#### Steps
+1. Open your terminal at the project root `D:\Code-Compass` and start the containers:
+   ```bash
+   docker compose up --build -d
+   ```
+2. Once the build completes, the containers will be running in the background:
+   - **Frontend UI**: [http://localhost:3000](http://localhost:3000)
+   - **Backend API**: [http://127.0.0.1:8000](http://127.0.0.1:8000) (Swagger Docs at `/docs`)
 
-Prerequisites
-The underlying local native system storage tools require a local C++ compilation engine to build hardware-level system bindings during initialization.
+#### Manage Containers
+- **View logs**:
+  ```bash
+  docker compose logs -f frontend
+  # or
+  docker compose logs -f backend
+  ```
+- **Stop containers**:
+  ```bash
+  docker compose down
+  ```
 
-Windows Systems: Visual Studio Build Tools 2022 (You must check Desktop development with C++ and MSVC v143 in the installer)
+---
 
-macOS / Linux Systems: Xcode Command Line Tools (xcode-select --install) or build-essential GCC compilers
+### Method B: Local Execution (Windows)
 
-Runtime Software Engines: Python 3.10 or higher and Node.js 18 or higher installed on your system environment paths.
+Runs the services natively. We include powershell helper scripts to automate setting environment variables and virtual environments.
 
-Installation & Dependency Alignment
-1. System Clone
-Bash
-git clone [https://github.com/Parth-Jos-hi/Code-Compass.git](https://github.com/Parth-Jos-hi/Code-Compass.git)
-cd voidscout
-2. Backend Environment Verification & Startup
-Bash
-cd backend
-# Establish an isolated python environment shell
-python -m venv .venv
+#### Prerequisites
+- **Node.js** v18+ and **npm** installed.
+- **Python** v3.12+ installed (Python v3.12 is highly recommended to fetch pre-compiled binaries for dependencies like `numpy` and `chromadb`).
+- **C++ Compiler Suite** (for native SQLite/ChromaDB compilation bindings if using older python versions):
+  - Windows: **Visual Studio Build Tools 2022** with the **"Desktop development with C++"** workflow selected.
+  - macOS/Linux: Run `xcode-select --install` or install `build-essential`.
 
-# Activate your virtual shell space
-# On Windows systems run:
-.venv\Scripts\activate
-# On macOS / Linux systems run:
-source .venv/bin/activate
+#### Steps
+1. **Initialize Backend**:
+   Run the backend helper in your terminal root. It automatically sets up a Python virtual environment (`.venv`), upgrades pip, installs required wheels, and runs the dev server:
+   ```powershell
+   .\start-backend.ps1
+   ```
+   *The server will start on [http://127.0.0.1:8000](http://127.0.0.1:8000).*
 
-# Force upgrade setup tools wheels and pull tracking packages
-pip install --upgrade pip
-pip install -r requirements.txt
+2. **Initialize Frontend**:
+   In a separate terminal window, run the frontend helper to configure base API URLs, install package dependencies, and boot the Next.js dev server:
+   ```powershell
+   .\start-frontend.ps1
+   ```
+   *The client dashboard will start on [http://localhost:3000](http://localhost:3000).*
 
-# Boot the FastAPI uvicorn production server process
-uvicorn app.main:app --reload
-The engine will log: INFO: Uvicorn server running on http://127.0.0.1:8000
+---
 
-3. Frontend Client Portal Deployment
-Open a parallel split terminal terminal window and initialize the presentation node layer:
+## 💡 Usage Guide
 
-Bash
-cd frontend
-# Clean fetch packages from repository manifest lock files
-npm install
+1. Open your browser and navigate to **[http://localhost:3000](http://localhost:3000)**.
+2. In the **Project Identifier** field, enter a moniker for your session configuration (e.g., `Aegis-SR`).
+3. In the **Absolute Path Location** input, paste the absolute path to any local project folder you want to explore.
+4. Click **Initialize Exploration**.
+5. **Explore the 3D Tree**:
+   - **Left Click & Drag**: Orbits and pivots the camera field of view.
+   - **Scroll Wheel**: Zooms in/out of the node constellation structure.
+   - **Click Node**: Focuses on a file, opening the Inspector side-panel.
+6. **Socratic RAG & Quiz**:
+   - Select the **Socratic RAG** tab in the sidebar to ask complex structural or algorithmic questions. Type your query in the enlarged textarea and press `Enter` to submit.
+   - Select **Quiz Module**, click **Quiz Module Info**, and answer questions generated by the LLM in the main card. Type your answers inside the expanded textbox canvas to test your code understanding. Achieve a score higher than 75% to master the module!
 
-# Start the Next.js local asset development stream
-npm run dev
-The interface layout will log: Ready in 1.2s - http://localhost:3000
+---
 
-💡 Usage Guide
-Point your primary internet browser address path to http://localhost:3000.
+## 🧪 Verification & Testing
 
-Locate the Project Identifier configuration text component and assign a clean system moniker (e.g., Aegis-SR).
+To confirm that all components, databases, and LLM integrations are operating properly:
 
-Inside the Absolute Path Location string input field, paste the absolute computer target storage address of the codebase you want to map (e.g., C:/Users/Parth/projects/my-app).
+1. **Verify API Health Status**:
+   ```bash
+   curl -X GET http://127.0.0.1:8000/api/health
+   ```
+   *Should return an operational/success message.*
 
-Select the blue Initialize Exploration execution toggle button.
+2. **Check Indexed Files and Vectors**:
+   ```bash
+   curl -X GET "http://127.0.0.1:8000/api/voyage/nodes?repo_name=Aegis-SR"
+   ```
+   *Should return the serialized node coordinates and structural attributes from database storage.*
 
-Interact With Spatial Grid Engine:
+---
 
-Left Click + Drag Cursor: Orbits and rotates your field of view camera parameters.
+## 🛠️ Troubleshooting
 
-Scroll Wheel: Controls camera distance and zoom depths.
+- **Backend compilation fails on `numpy` or `chromadb`**:
+  Make sure you are using **Python 3.12**, as precompiled wheels are readily available for it. If using other versions, verify you have Visual Studio C++ build tools installed so pip can compile the packages.
+- **Frontend shows `Failed to fetch`**:
+  Ensure the backend FastAPI service is running. If running locally, check that `$env:NEXT_PUBLIC_API_BASE_URL` is set correctly to `http://127.0.0.1:8000/api`.
+- **Docker rebuild changes**:
+  Since file copy commands run during the Docker build stage, any custom edits to the workspace require rebuilding:
+  ```bash
+  docker compose up -d --build frontend
+  ```
 
-Node Click: Opens the slide-out inspector screen to review file attributes, language metadata, and metrics trackers.
+---
 
-Mark Module as Mastered: Flags file completions by logging state modifications down to disk.
+## 🤝 Contribution Framework
 
-🧪 Verification & Testing Matrix
-To guarantee your system layers are connecting smoothly and database pipelines are running without errors, you can run verification steps using these standard evaluation tracking endpoints:
+We appreciate contributions to improve codebase rendering, parsers, and custom layouts!
 
-Bash
-# Check the status health condition of the FastAPI background layer
-curl -X GET [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+1. Fork this repository.
+2. Create your feature branch (`git checkout -b feature/AmazingRefinement`).
+3. Commit your updates (`git commit -m 'Add some AmazingRefinement structural parameters'`).
+4. Push to the branch (`git push origin feature/AmazingRefinement`).
+5. Open a Pull Request for review.
 
-# Verify your active database tracking indices configuration 
-curl -X GET [http://127.0.0.1:8000/api/voyage/nodes?repo_name=Aegis-SR](http://127.0.0.1:8000/api/voyage/nodes?repo_name=Aegis-SR)
-🤝 Detailed Contribution Framework
-We appreciate community refinements to code visualization modules. To propose functional adjustments, adhere strictly to the following engineering workflow pipeline:
+---
 
-Code of Conduct
-Maintain semantic file separation boundaries inside layout design components.
+## 📄 License
 
-Write robust type definitions for structural interface schemas.
+Distributed under the Apache License 2.0. See the `LICENSE` file for more details.
 
-Verify your changes locally before opening pull requests upstream.
+---
 
-Execution Cycle
-Fork the parent project target layout tracking directory down to your profile space.
+## 📬 Contact & Support
 
-Initialize an isolated code tracking update branch:
-
-Bash
-git checkout -b feature/AmazingRefinement
-Commit structural updates with descriptive tracking notations:
-
-Bash
-git commit -m 'Add some AmazingRefinement structural parameters'
-Push your modifications to your origin branch fork:
-
-Bash
-git push origin feature/AmazingRefinement
-Navigate to the primary tracking repository and execute a clear Pull Request sequence matching our development criteria ledger.
-
-📄 Comprehensive Apache License 2.0 Ledger
-Plaintext
-Apache License 2.0
-
-Copyright 2026 Parth Joshi
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-📬 Contact & Support
-Parth Joshi - joshiparth936@gmail.com
-
-Project Link: https://github.com/Parth-Jos-hi/Code-Compass
-
-🙏 Acknowledgments
-React Three Fiber Ecosystem Developers - Hardware accelerated canvas libraries
-
-FastAPI Framework Core Maintainers - High performance server routing
-
-ChromaDB Vector Database Analytics Group - Embedding extraction and vector lookups
+- **Parth Joshi** - [joshiparth936@gmail.com](mailto:joshiparth936@gmail.com)
+- **Repository Link**: [https://github.com/Parth-Jos-hi/Code-Compass](https://github.com/Parth-Jos-hi/Code-Compass)
