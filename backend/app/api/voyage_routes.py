@@ -244,6 +244,87 @@ async def index_repository(repo_path: str = Query(...), repo_name: str = Query(.
     }
 
 
+def get_drives() -> list[str]:
+    drives = []
+    if os.name == 'nt':
+        # On Windows, list drives from C to Z
+        for letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+            drive = f"{letter}:\\"
+            try:
+                if os.path.exists(drive):
+                    drives.append(drive)
+            except Exception:
+                continue
+    return drives
+
+
+@router.get("/browse")
+async def browse_directory(path: str | None = Query(None)):
+    """
+    Lists directories in a path to enable choosing a codebase repository.
+    Works natively on Windows, macOS, and Linux.
+    """
+    is_windows = os.name == 'nt'
+    drives = get_drives() if is_windows else []
+
+    if not path or not isinstance(path, str):
+        # Default to current directory if path is not specified
+        path = os.getcwd()
+
+    # Normalize the path structure
+    path = os.path.normpath(path)
+
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail=f"Path '{path}' does not exist.")
+
+    if not os.path.isdir(path):
+        raise HTTPException(status_code=400, detail=f"Path '{path}' is not a directory.")
+
+    # Determine parent path
+    parent_path = os.path.dirname(path)
+    if parent_path == path:
+        parent_path = None
+    else:
+        parent_path = os.path.abspath(parent_path)
+
+    directories = []
+    try:
+        # scan directories
+        for entry in os.scandir(path):
+            try:
+                if entry.is_dir():
+                    # Check if it has a .git folder or is a git repo itself
+                    is_git = os.path.exists(os.path.join(entry.path, ".git"))
+                    directories.append({
+                        "name": entry.name,
+                        "path": entry.path.replace("\\", "/"),
+                        "is_git": is_git
+                    })
+            except PermissionError:
+                continue
+            except Exception:
+                continue
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Permission denied to access this directory.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to scan directory: {str(e)}")
+
+    # Sort directories by name
+    directories.sort(key=lambda x: x["name"].lower())
+
+    # Format paths using forward slashes for cross-platform UI consistency
+    formatted_path = path.replace("\\", "/")
+    formatted_parent = parent_path.replace("\\", "/") if parent_path else None
+    formatted_drives = [d.replace("\\", "/") for d in drives]
+
+    return {
+        "current_path": formatted_path,
+        "parent_path": formatted_parent,
+        "drives": formatted_drives,
+        "directories": directories
+    }
+
+
 @router.get("/nodes")
 async def get_repository_graph(repo_name: str = Query(...), db: Session = Depends(get_db)):
     """

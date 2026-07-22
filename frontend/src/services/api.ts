@@ -261,3 +261,29 @@ export async function generateQuestionsForNode(nodeId: number, repoName: string)
   }
   return await response.json();
 }
+
+export interface BrowseResponse {
+  current_path: string;
+  parent_path: string | null;
+  drives: string[];
+  directories: Array<{
+    name: string;
+    path: string;
+    is_git: boolean;
+  }>;
+}
+
+/**
+ * Retrieve subdirectories and drives from the backend for selection.
+ */
+export async function browseDirectory(path?: string): Promise<BrowseResponse> {
+  const query = path ? `?path=${encodeURIComponent(path)}` : "";
+  const response = await fetch(`${API_BASE_URL}/voyage/browse${query}`, {
+    method: "GET",
+  });
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.detail || "Failed to browse directory.");
+  }
+  return await response.json();
+}

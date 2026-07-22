@@ -6,10 +6,12 @@ import FloatingAssets from '../components/FloatingAssets';
 import FileTreeGraph from '../components/FileTreeGraph';
 import QuestionModule from '../components/QuestionModule';
 import DynamicSidebar from '../components/DynamicSidebar';
+import DirectoryBrowser from '../components/DirectoryBrowser';
 import { indexLocalRepository, getRepositoryNodes, getQuestionsForNode, generateQuestionsForNode, getMasteryStatus, IndexResponse, CodeNode, Question } from '../services/api';
 
 export default function Home() {
   const [repoPath, setRepoPath] = useState("");
+  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
   const [repoName, setRepoName] = useState("");
   const [loading, setLoading] = useState(false);
   const [scanResult, setScanResult] = useState<IndexResponse | null>(null);
@@ -102,14 +104,23 @@ export default function Home() {
             </div>
             <div>
               <label className="block text-[10px] font-bold tracking-wider text-neutral-400 uppercase mb-2">Absolute Path Location</label>
-              <input 
-                type="text"
-                placeholder="C:/Users/name/projects/my-app"
-                value={repoPath}
-                onChange={(e) => setRepoPath(e.target.value)}
-                className="w-full bg-[#111] border border-neutral-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:outline-none focus:border-rose-500 transition-colors"
-                required
-              />
+              <div className="flex gap-2">
+                <input 
+                  type="text"
+                  placeholder="C:/Users/name/projects/my-app"
+                  value={repoPath}
+                  onChange={(e) => setRepoPath(e.target.value)}
+                  className="flex-1 bg-[#111] border border-neutral-800 rounded-xl px-4 py-3 text-xs font-mono text-white focus:outline-none focus:border-rose-500 transition-colors"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsBrowserOpen(true)}
+                  className="bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:text-white text-neutral-300 rounded-xl px-4 py-3 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
+                >
+                  Browse...
+                </button>
+              </div>
             </div>
             
             <button
@@ -237,6 +248,24 @@ export default function Home() {
         </section>
 
       </main>
+
+      <DirectoryBrowser 
+        isOpen={isBrowserOpen}
+        onClose={() => setIsBrowserOpen(false)}
+        onSelect={(path) => {
+          setRepoPath(path);
+          // Auto-fill Project Identifier with folder name if empty
+          if (!repoName && path) {
+            const cleanPath = path.replace(/\\/g, '/');
+            const parts = cleanPath.split('/').filter(Boolean);
+            const folderName = parts[parts.length - 1];
+            if (folderName) {
+              setRepoName(folderName);
+            }
+          }
+        }}
+        initialPath={repoPath}
+      />
     </div>
   );
 }
